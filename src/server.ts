@@ -16,11 +16,20 @@ dotenv.config();
 const app  = express();
 const PORT = process.env.PORT || 4000;
 
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://yastekhub.github.io',
-];
-app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(cors({
+  origin: (origin, cb) => {
+    const allowed = [
+      'http://localhost:5173',
+      /\.vercel\.app$/,
+    ];
+    if (!origin || allowed.some(p => typeof p === 'string' ? p === origin : p.test(origin))) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
