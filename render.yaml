@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: scot-quiz-backend
+    runtime: node
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: PORT
+        value: 4000
