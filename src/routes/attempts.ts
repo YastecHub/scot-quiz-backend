@@ -142,6 +142,19 @@ router.patch('/:testId/answer', (req: Request, res: Response) => {
   res.json({ saved: true });
 });
 
+// ── LOG VIOLATION ────────────────────────────────────────────
+router.post('/:testId/violation', (req: Request, res: Response) => {
+  const testId = Number(req.params.testId);
+  const userId = req.user!.id;
+
+  const attempt = db.prepare("SELECT * FROM attempts WHERE test_id = ? AND user_id = ? AND status = 'in_progress'").get(testId, userId) as Attempt | undefined;
+  if (!attempt) { res.status(404).json({ error: 'No active attempt.' }); return; }
+
+  db.prepare('UPDATE attempts SET violations = violations + 1 WHERE id = ?').run(attempt.id);
+  const updated = db.prepare('SELECT violations FROM attempts WHERE id = ?').get(attempt.id) as { violations: number };
+  res.json({ violations: updated.violations });
+});
+
 // ── SUBMIT ATTEMPT ─────────────────────────────────────────────
 router.post('/:testId/submit', (req: Request, res: Response) => {
   const testId = Number(req.params.testId);

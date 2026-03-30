@@ -103,6 +103,7 @@ export function initDB(): void {
   try { db.exec(`ALTER TABLE questions ADD COLUMN created_by INTEGER REFERENCES users(id)`); } catch {}
   try { db.exec(`ALTER TABLE resources ADD COLUMN topic TEXT NOT NULL DEFAULT ''`); } catch {}
   try { db.exec(`ALTER TABLE resources ADD COLUMN resource_type TEXT NOT NULL DEFAULT 'note'`); } catch {}
+  try { db.exec(`ALTER TABLE attempts ADD COLUMN violations INTEGER NOT NULL DEFAULT 0`); } catch {}
 
   // Replace old Chemistry topics with the correct 8 JAMB topics
   const correctChemSlugs = [

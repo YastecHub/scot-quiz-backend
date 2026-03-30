@@ -194,7 +194,7 @@ router.get('/tests/:id/results', (req: Request, res: Response) => {
   if (!test) { res.status(404).json({ error: 'Test not found.' }); return; }
 
   const results = db.prepare(`
-    SELECT a.id, a.status, a.score, a.total, a.pct, a.submitted_at, u.name, u.email
+    SELECT a.id, a.status, a.score, a.total, a.pct, a.submitted_at, a.violations, u.name, u.email
     FROM attempts a JOIN users u ON a.user_id = u.id
     WHERE a.test_id = ? AND a.status IN ('completed', 'timed_out')
     ORDER BY a.pct DESC, a.submitted_at ASC
@@ -212,11 +212,11 @@ router.get('/tests/:id/export.pdf', (req: Request, res: Response) => {
   if (!test) { res.status(404).json({ error: 'Test not found.' }); return; }
 
   const attempts = db.prepare(`
-    SELECT a.score, a.total, a.pct, a.status, a.submitted_at, u.name, u.email
+    SELECT a.score, a.total, a.pct, a.status, a.submitted_at, a.violations, u.name, u.email
     FROM attempts a JOIN users u ON a.user_id = u.id
     WHERE a.test_id = ? AND a.status IN ('completed', 'timed_out')
     ORDER BY a.pct DESC, a.submitted_at ASC
-  `).all(testId) as { score: number; total: number; pct: number; status: string; submitted_at: string; name: string; email: string }[];
+  `).all(testId) as { score: number; total: number; pct: number; status: string; submitted_at: string; violations: number; name: string; email: string }[];
 
   const doc = new PDFDocument({ margin: 50, size: 'A4' });
   res.setHeader('Content-Type', 'application/pdf');
@@ -243,16 +243,17 @@ router.get('/tests/:id/export.pdf', (req: Request, res: Response) => {
   doc.moveDown(0.8);
 
   // Table header
-  const col = { rank: 50, name: 90, email: 250, score: 400, pct: 460, status: 500 };
+  const col = { rank: 50, name: 90, email: 250, score: 390, pct: 445, status: 490, flags: 535 };
   doc.rect(50, doc.y, 495, 20).fill('#0a3d1f');
   const rowY = doc.y - 20;
   doc.fontSize(8).font('Helvetica-Bold').fillColor('#fff');
   doc.text('#',      col.rank,   rowY + 6, { width: 30 });
   doc.text('Name',   col.name,   rowY + 6, { width: 155 });
-  doc.text('Email',  col.email,  rowY + 6, { width: 145 });
-  doc.text('Score',  col.score,  rowY + 6, { width: 55 });
-  doc.text('%',      col.pct,    rowY + 6, { width: 35 });
-  doc.text('Status', col.status, rowY + 6, { width: 50 });
+  doc.text('Email',  col.email,  rowY + 6, { width: 135 });
+  doc.text('Score',  col.score,  rowY + 6, { width: 50 });
+  doc.text('%',      col.pct,    rowY + 6, { width: 40 });
+  doc.text('Status', col.status, rowY + 6, { width: 40 });
+  doc.text('Flags',  col.flags,  rowY + 6, { width: 30 });
   doc.moveDown(0.2);
 
   // Table rows
@@ -265,12 +266,15 @@ router.get('/tests/:id/export.pdf', (req: Request, res: Response) => {
     doc.text(`${i + 1}`,    col.rank,   y + 5, { width: 30 });
     doc.text(a.name ?? '',  col.name,   y + 5, { width: 155 });
     doc.fillColor('#6aab82');
-    doc.text(a.email ?? '', col.email,  y + 5, { width: 145 });
+    doc.text(a.email ?? '', col.email,  y + 5, { width: 135 });
     doc.fillColor(scoreColor).font('Helvetica-Bold');
-    doc.text(`${a.score ?? 0}/${a.total ?? 0}`, col.score, y + 5, { width: 55 });
-    doc.text(`${Math.round(pctVal)}%`,           col.pct,   y + 5, { width: 35 });
+    doc.text(`${a.score ?? 0}/${a.total ?? 0}`, col.score, y + 5, { width: 50 });
+    doc.text(`${Math.round(pctVal)}%`,           col.pct,   y + 5, { width: 40 });
     doc.fillColor('#6aab82').font('Helvetica');
-    doc.text(a.status,                           col.status, y + 5, { width: 60 });
+    doc.text(a.status,                           col.status, y + 5, { width: 40 });
+    const flags = a.violations ?? 0;
+    doc.fillColor(flags > 0 ? '#dc2626' : '#6aab82').font(flags > 0 ? 'Helvetica-Bold' : 'Helvetica');
+    doc.text(flags > 0 ? `⚑ ${flags}` : '—',   col.flags,  y + 5, { width: 30 });
     doc.y = y + 18;
   });
 
